@@ -1,77 +1,34 @@
 # Enterprise Healthcare Document Intelligence RAG Platform
 
-This repository contains my versioned implementation of a healthcare document intelligence RAG platform.
+I built this project as a production-style healthcare document intelligence RAG platform.
 
-RAG means Retrieval-Augmented Generation. In simple words, the application will read healthcare PDF documents, store searchable chunks of those documents, retrieve the most relevant chunks for a question, and ask an LLM to answer using only the retrieved evidence.
+My goal was to rebuild the project from scratch and understand each part of a real GenAI/RAG system: PDF ingestion, parsing, chunking, embeddings, vector search, grounded answer generation, citations, API development, frontend development, evaluation, Docker, and AWS deployment planning.
+
+RAG means Retrieval-Augmented Generation. In simple words, my application reads healthcare PDF documents, breaks them into searchable chunks, stores those chunks in a vector database, retrieves the most relevant chunks for a user question, and generates an answer using the retrieved evidence.
 
 ## Current Status
 
 Current version: Version 15.
 
-Implemented so far:
-- GitHub-ready folder structure
-- `README.md`
-- `PROJECT_NOTES.md`
-- `requirements.txt`
-- `.env.example`
-- `.gitignore`
-- production-style backend/frontend split
-- production-style folders for backend, frontend, ingestion, RAG, evaluation, data, docs, scripts, and tests
-- backend settings loader
-- local health check logic
-- command-line health check script
-- basic unit tests
-- PyPDF-based PDF page extraction
-- PDF ingestion script for files in `data/raw`
-- page-level metadata with file name, file path, page number, and total pages
-- LangChain `Document` conversion
-- recursive text splitting into chunks
-- chunk metadata for future citations and vector storage
+At this stage, I have implemented the full resume-aligned project path:
+
+- healthcare PDF ingestion with PyPDF
+- Unstructured parsing path for more complex PDFs
+- OCR fallback path for scanned PDFs
+- LangChain `Document` objects
+- LangChain recursive text splitting
 - OpenAI embedding client setup
-- local ChromaDB vector store setup
-- script to build the vector database from PDF chunks
-- vector store tests with fake local embeddings
+- ChromaDB local vector database setup
 - semantic retrieval from ChromaDB
-- search script for retrieving relevant chunks
-- retrieval tests with fake local embeddings
 - grounded LLM answer generation
 - source citations with file name, page number, and chunk ID
-- answer-generation tests with a fake local LLM
-- FastAPI backend application
-- `/health` endpoint
-- `/ask` endpoint
-- API request and response models
-- API tests with mocked RAG pipeline calls
-- Streamlit frontend application
-- frontend API client for calling FastAPI
-- question input, answer display, and citations display
-- frontend tests with mocked backend calls
-- Unstructured PDF parser path
-- Unstructured ingestion script
-- parser dependency error handling
-- Unstructured parser tests with mocked elements
-- OCR fallback for scanned PDFs
-- OCR ingestion script
-- OCR dependency error handling
-- OCR tests with mocked page images
-- RAGAS evaluation dataset builder
-- sample evaluation examples
-- dry-run RAGAS evaluation script
-- RAGAS evaluation tests
-- Dockerfile for the FastAPI backend
-- Dockerfile for the Streamlit frontend
-- Docker Compose setup for running backend and frontend together
-- Docker ignore rules for secrets, caches, local data, and vector database files
-- Docker configuration tests
-- AWS S3 configuration settings
-- S3 storage helper for listing and uploading healthcare PDFs
-- S3 document management script
-- S3 storage tests with fake AWS clients
+- FastAPI backend with `/health` and `/ask` endpoints
+- Streamlit frontend for asking questions and viewing citations
+- RAGAS evaluation support
+- Docker setup for backend and frontend
+- AWS S3 document storage path
 - AWS EC2 deployment path
-- EC2 Docker Compose override
-- EC2 bootstrap user data script
-- EC2 deployment validation script
-- EC2 deployment tests
+- automated tests for the main project layers
 
 ## Tech Stack
 
@@ -83,76 +40,109 @@ Implemented so far:
 - ChromaDB
 - PyPDF
 - Unstructured
-- OCR
+- OCR with `pdf2image` and `pytesseract`
 - RAGAS
 - Docker
 - AWS S3
 - AWS EC2
+
+## What I Built
+
+I organized the project like a production-style application instead of keeping everything in one script.
+
+The backend contains the ingestion, RAG, API, storage, and configuration code. The frontend contains the Streamlit UI. Scripts are used for local workflows like ingestion, vector store building, question answering, evaluation, S3 document actions, and EC2 deployment validation. Tests cover the important behavior without requiring real API keys or real AWS calls.
 
 ## Folder Structure
 
 ```text
 rag-healthcare/
 ├── backend/
-│   ├── Dockerfile       # Container image for the FastAPI backend
+│   ├── Dockerfile
 │   └── app/
-│       ├── __init__.py   # Marks backend app as a Python package
 │       ├── api/          # FastAPI routes
 │       ├── core/         # Settings and health check logic
-│       ├── ingestion/    # PDF parsing and document loading
+│       ├── ingestion/    # PyPDF, Unstructured, and OCR parsing
 │       ├── models/       # API request and response schemas
-│       ├── rag/          # LangChain documents, chunking, embeddings, retrieval, and answer logic
+│       ├── rag/          # Chunking, embeddings, vector store, retrieval, answers
 │       └── storage/      # AWS S3 document storage helpers
 ├── data/
 │   ├── raw/              # Local input PDFs for development
-│   ├── processed/        # Future parsed text/chunks
+│   ├── processed/        # Parsed/processed outputs
 │   └── vector_db/
-│       └── chroma/       # Local ChromaDB vector database files
+│       └── chroma/       # Local ChromaDB files
 ├── deployment/
 │   └── ec2/              # AWS EC2 deployment guide and bootstrap script
-├── docs/                 # Extra documentation
 ├── evaluation/           # RAGAS evaluation code
-├── frontend/
-│   ├── Dockerfile        # Container image for the Streamlit frontend
-│   └── app.py            # Streamlit application
-├── scripts/              # Helper scripts
+├── frontend/             # Streamlit frontend
+├── scripts/              # Local helper scripts
 ├── tests/                # Automated tests
-├── .dockerignore         # Files Docker should not copy into images
-├── .env.example          # Safe environment variable template
-├── .gitignore            # Files Git should ignore
-├── docker-compose.ec2.yml # EC2 Compose override
-├── docker-compose.yml    # Runs backend and frontend containers together
-├── PROJECT_NOTES.md      # Project notes for each version
-├── README.md             # Main project overview
-└── requirements.txt      # Python dependencies
+├── .dockerignore
+├── .env.example
+├── .gitignore
+├── docker-compose.ec2.yml
+├── docker-compose.yml
+├── PROJECT_NOTES.md
+├── README.md
+└── requirements.txt
 ```
 
-## API Key Safety
+## How The RAG Pipeline Works
 
-Never commit real API keys to GitHub.
+The project pipeline is:
 
-This repository includes `.env.example` only. Later, you will create your own local `.env` file on your machine and put real secrets there. The `.env` file is ignored by Git.
+```text
+Healthcare PDFs
+-> PDF parsing with PyPDF, Unstructured, or OCR
+-> LangChain Document objects
+-> text chunks
+-> OpenAI embeddings
+-> ChromaDB vector storage
+-> semantic retrieval
+-> grounded LLM answer generation
+-> citations
+-> FastAPI backend
+-> Streamlit frontend
+```
 
-## Beginner Setup Notes
+For local development, PDFs can be placed in `data/raw/`.
 
-Version 2 includes a small runnable Python health check.
+For the cloud storage path, I added AWS S3 helper code for listing and uploading source PDFs.
 
-Create and activate a virtual environment:
+For the deployment path, I added Docker and an AWS EC2 deployment guide.
+
+## API Key And Secret Safety
+
+I do not commit real API keys or cloud credentials.
+
+This repository includes `.env.example` only. A real local `.env` file should be created on the developer machine and should never be committed to GitHub.
+
+Example local values:
+
+```text
+OPENAI_API_KEY=your_real_key_here
+AWS_REGION=us-east-1
+AWS_S3_BUCKET_NAME=your_real_bucket_name
+AWS_S3_RAW_PREFIX=healthcare-documents/raw
+```
+
+The `.env` file is ignored by Git.
+
+## Local Setup
+
+Create and activate a Python virtual environment:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install dependencies when needed:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-On Mac, `source .venv/bin/activate` turns on the Python virtual environment for the current terminal.
-
-Run the local health check:
+Run the health check:
 
 ```bash
 python3 scripts/health_check.py
@@ -164,27 +154,43 @@ Run tests:
 python3 -m unittest discover -s tests
 ```
 
-Run local PDF ingestion:
+## Common Local Workflows
+
+Parse local PDFs with PyPDF:
 
 ```bash
 python3 scripts/ingest_pdfs.py
 ```
 
-Run Unstructured PDF ingestion:
+Parse PDFs with Unstructured:
 
 ```bash
 python3 scripts/ingest_unstructured_pdfs.py
 ```
 
-Unstructured PDF parsing can require extra system dependencies on macOS for some document types. The code reports a clear setup message if optional PDF dependencies are missing.
-
-Run OCR fallback PDF ingestion:
+Run OCR fallback for scanned PDFs:
 
 ```bash
 python3 scripts/ingest_ocr_pdfs.py
 ```
 
-Real OCR requires Python packages plus system tools. On macOS, this usually means installing Poppler for PDF-to-image conversion and Tesseract for image-to-text OCR.
+Create chunks:
+
+```bash
+python3 scripts/chunk_pdfs.py
+```
+
+Build the ChromaDB vector store:
+
+```bash
+python3 scripts/build_vector_store.py
+```
+
+Ask a question from the command line:
+
+```bash
+python3 scripts/answer_question.py "What does the document say about diabetes?"
+```
 
 Run RAGAS evaluation dry run:
 
@@ -192,45 +198,7 @@ Run RAGAS evaluation dry run:
 python3 scripts/run_ragas_evaluation.py
 ```
 
-Run real RAGAS evaluation:
-
-```bash
-python3 scripts/run_ragas_evaluation.py --run
-```
-
-Real RAGAS evaluation may call an LLM and requires local API keys.
-
-Place local development PDFs in `data/raw/`. This folder is ignored by Git so private or large PDFs do not get uploaded accidentally.
-
-Create LangChain documents and text chunks:
-
-```bash
-python3 scripts/chunk_pdfs.py
-```
-
-Build the local ChromaDB vector store:
-
-```bash
-python3 scripts/build_vector_store.py
-```
-
-This command needs a real local `OPENAI_API_KEY` only when there are chunks to embed. Do not paste your key into chat and do not commit `.env`.
-
-Search the local ChromaDB vector store:
-
-```bash
-python3 scripts/search_vector_store.py "What does the document say about diabetes?"
-```
-
-This command needs real stored vectors and a local `OPENAI_API_KEY`. Tests use fake embeddings and do not call OpenAI.
-
-Generate a grounded answer with citations:
-
-```bash
-python3 scripts/answer_question.py "What does the document say about diabetes?"
-```
-
-This command needs real stored vectors and a local `OPENAI_API_KEY`. Tests use a fake local LLM and do not call OpenAI.
+## Running The App
 
 Run the FastAPI backend:
 
@@ -238,14 +206,12 @@ Run the FastAPI backend:
 python3 scripts/run_api.py
 ```
 
-Then open:
+Open:
 
 ```text
 http://127.0.0.1:8000/health
 http://127.0.0.1:8000/docs
 ```
-
-The `/ask` endpoint needs real stored vectors and a local `OPENAI_API_KEY`.
 
 Run the Streamlit frontend:
 
@@ -253,15 +219,17 @@ Run the Streamlit frontend:
 python3 scripts/run_frontend.py
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:8501
 ```
 
-For the full UI workflow, run the FastAPI backend first, then run the Streamlit frontend in a second terminal.
+For the full local UI workflow, I run FastAPI in one terminal and Streamlit in another terminal.
 
-Run the app with Docker:
+## Docker
+
+Build and run the app with Docker Compose:
 
 ```bash
 docker compose config
@@ -276,9 +244,7 @@ http://127.0.0.1:8000/health
 http://localhost:8501
 ```
 
-Docker Compose passes `.env` into the backend container at runtime if the file exists. The `.env` file is not committed to GitHub and is not copied into Docker images.
-
-The Compose file mounts local `data/` into the backend container so local PDFs and the ChromaDB folder can persist outside the container.
+## AWS S3 Path
 
 List documents in the configured S3 prefix:
 
@@ -286,29 +252,23 @@ List documents in the configured S3 prefix:
 python3 scripts/s3_documents.py --list
 ```
 
-Upload local PDFs from `data/raw/` to the configured S3 prefix:
+Upload local PDFs from `data/raw/` to S3:
 
 ```bash
 python3 scripts/s3_documents.py --upload
 ```
 
-Real S3 commands require AWS credentials configured on your machine and these local `.env` values:
+Real S3 commands require AWS credentials configured locally. I do not store AWS access keys in this repository.
 
-```text
-AWS_REGION=us-east-1
-AWS_S3_BUCKET_NAME=your_real_bucket_name
-AWS_S3_RAW_PREFIX=healthcare-documents/raw
-```
+## AWS EC2 Path
 
-Do not paste AWS access keys into chat and do not commit them to GitHub.
-
-Validate the EC2 deployment path:
+Validate the EC2 deployment files:
 
 ```bash
 python3 scripts/validate_ec2_deployment.py
 ```
 
-Check the combined local + EC2 Docker Compose configuration:
+Check the combined local and EC2 Docker Compose configuration:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.ec2.yml config
@@ -321,6 +281,27 @@ docker compose -f docker-compose.yml -f docker-compose.ec2.yml up -d --build
 ```
 
 The EC2 deployment guide is in `deployment/ec2/README.md`.
+
+## Testing Approach
+
+I wrote tests so I can verify the project safely without calling paid or external services every time.
+
+The tests use fake embeddings, fake LLM behavior, mocked parser behavior, and fake AWS clients where needed. Real OpenAI and AWS calls are only needed when running the actual local pipeline with real credentials.
+
+## Resume Alignment
+
+This project honestly matches the stack I wanted to show:
+
+```text
+Python, FastAPI, Streamlit, LangChain, OpenAI API, ChromaDB,
+PyPDF, Unstructured, OCR, RAGAS, Docker, AWS S3, AWS EC2
+```
+
+Strong resume-style summary:
+
+```text
+Built a production-style healthcare document intelligence RAG platform with PDF ingestion, OCR fallback, LangChain chunking, OpenAI embeddings, ChromaDB retrieval, grounded LLM responses with citations, FastAPI APIs, Streamlit UI, RAGAS evaluation, Docker containerization, and AWS S3/EC2 deployment paths.
+```
 
 ## Version Roadmap
 
