@@ -7,6 +7,7 @@ from backend.app.rag.answer_generator import (
     build_grounded_prompt,
     create_chat_llm,
     generate_grounded_answer,
+    select_relevant_chunks,
 )
 from backend.app.rag.retriever import RetrievedChunk
 
@@ -76,12 +77,21 @@ class AnswerGeneratorTests(unittest.TestCase):
         )
 
         self.assertIn("blood pressure", grounded_answer.answer)
-        self.assertEqual(len(grounded_answer.citations), 2)
+        self.assertEqual(len(grounded_answer.citations), 1)
         self.assertEqual(
             grounded_answer.citations[0].file_name,
             "hypertension-guide.pdf",
         )
         self.assertEqual(grounded_answer.citations[0].page_number, 4)
+
+    def test_select_relevant_chunks_filters_unrelated_chunks(self):
+        relevant_chunks = select_relevant_chunks(
+            question="How should hypertension be monitored?",
+            chunks=self._sample_chunks(),
+        )
+
+        self.assertEqual(len(relevant_chunks), 1)
+        self.assertEqual(relevant_chunks[0].file_name, "hypertension-guide.pdf")
 
     def test_generate_grounded_answer_handles_no_chunks(self):
         grounded_answer = generate_grounded_answer(
@@ -90,7 +100,17 @@ class AnswerGeneratorTests(unittest.TestCase):
             llm_callable=lambda prompt: "This should not be called.",
         )
 
-        self.assertIn("do not contain enough information", grounded_answer.answer)
+        self.assertIn("could not find enough relevant information", grounded_answer.answer)
+        self.assertEqual(grounded_answer.citations, [])
+
+    def test_generate_grounded_answer_guardrails_irrelevant_question(self):
+        grounded_answer = generate_grounded_answer(
+            question="What is the capital of France?",
+            chunks=self._sample_chunks(),
+            llm_callable=lambda prompt: "This should not be called.",
+        )
+
+        self.assertIn("healthcare documents", grounded_answer.answer)
         self.assertEqual(grounded_answer.citations, [])
 
     def test_generate_grounded_answer_rejects_empty_question(self):

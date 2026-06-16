@@ -35,6 +35,7 @@ class DockerConfigTests(unittest.TestCase):
         self.assertEqual(compose["services"]["backend"]["ports"], ["8000:8000"])
         self.assertEqual(compose["services"]["frontend"]["ports"], ["8501:8501"])
         self.assertIn("./data:/app/data", compose["services"]["backend"]["volumes"])
+        self.assertIn("./data:/app/data", compose["services"]["frontend"]["volumes"])
 
     def test_dockerignore_excludes_secrets_and_local_data(self):
         dockerignore = (PROJECT_ROOT / ".dockerignore").read_text()
@@ -46,4 +47,3 @@ class DockerConfigTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

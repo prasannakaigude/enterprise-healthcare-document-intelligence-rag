@@ -1,6 +1,7 @@
 """Grounded answer generation with source citations."""
 
 from dataclasses import dataclass
+import re
 from typing import Callable, List
 import os
 import warnings
@@ -33,6 +34,88 @@ class GroundedAnswer:
 
     answer: str
     citations: List[SourceCitation]
+
+
+STOPWORDS = {
+    "a",
+    "about",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "does",
+    "for",
+    "from",
+    "how",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "policy",
+    "say",
+    "should",
+    "the",
+    "this",
+    "to",
+    "what",
+    "when",
+    "where",
+    "who",
+    "why",
+    "with",
+}
+
+
+def _content_tokens(text: str) -> set[str]:
+    """Return meaningful lowercase tokens for simple relevance checks."""
+
+    tokens = set(re.findall(r"[a-zA-Z][a-zA-Z0-9-]{2,}", text.lower()))
+    return {token for token in tokens if token not in STOPWORDS}
+
+
+def chunk_matches_question(question: str, chunk: RetrievedChunk) -> bool:
+    """Check whether a retrieved chunk has basic lexical overlap with the question."""
+
+    question_tokens = _content_tokens(question)
+
+    if not question_tokens:
+        return False
+
+    chunk_tokens = _content_tokens(chunk.text)
+    return bool(question_tokens.intersection(chunk_tokens))
+
+
+def select_relevant_chunks(
+    question: str,
+    chunks: List[RetrievedChunk],
+    max_chunks: int = 3,
+) -> List[RetrievedChunk]:
+    """Keep only chunks that look relevant and avoid duplicate citations."""
+
+    selected_chunks: List[RetrievedChunk] = []
+    seen_sources: set[tuple[str, int, str]] = set()
+
+    for chunk in chunks:
+        if not chunk_matches_question(question, chunk):
+            continue
+
+        source_key = (chunk.file_name, chunk.page_number, chunk.chunk_id)
+
+        if source_key in seen_sources:
+            continue
+
+        selected_chunks.append(chunk)
+        seen_sources.add(source_key)
+
+        if len(selected_chunks) >= max_chunks:
+            break
+
+    return selected_chunks
 
 
 def create_chat_llm(settings: Settings = None) -> ChatOpenAI:
@@ -120,13 +203,19 @@ def generate_grounded_answer(
     if not question.strip():
         raise ValueError("question cannot be empty")
 
-    if not chunks:
+    relevant_chunks = select_relevant_chunks(question=question, chunks=chunks)
+
+    if not relevant_chunks:
         return GroundedAnswer(
-            answer="The provided documents do not contain enough information to answer this question.",
+            answer=(
+                "I could not find enough relevant information in the uploaded "
+                "documents to answer this question. Please ask a question that is "
+                "covered by the healthcare documents."
+            ),
             citations=[],
         )
 
-    prompt = build_grounded_prompt(question=question, chunks=chunks)
+    prompt = build_grounded_prompt(question=question, chunks=relevant_chunks)
 
     if llm_callable:
         answer = llm_callable(prompt)
@@ -140,8 +229,7 @@ def generate_grounded_answer(
             page_number=chunk.page_number,
             chunk_id=chunk.chunk_id,
         )
-        for chunk in chunks
+        for chunk in relevant_chunks
     ]
 
     return GroundedAnswer(answer=answer, citations=citations)
-
