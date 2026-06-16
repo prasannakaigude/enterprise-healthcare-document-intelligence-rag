@@ -1,0 +1,102 @@
+import unittest
+from unittest.mock import patch
+
+from backend.app.core.settings import Settings, get_settings
+from backend.app.rag.answer_generator import (
+    build_context,
+    build_grounded_prompt,
+    create_chat_llm,
+    generate_grounded_answer,
+)
+from backend.app.rag.retriever import RetrievedChunk
+
+
+class AnswerGeneratorTests(unittest.TestCase):
+    def _sample_chunks(self):
+        return [
+            RetrievedChunk(
+                text="Patients with hypertension should monitor blood pressure regularly.",
+                score=0.12,
+                file_name="hypertension-guide.pdf",
+                page_number=4,
+                chunk_id="hypertension-guide.pdf:page-4:chunk-1",
+                metadata={"file_name": "hypertension-guide.pdf"},
+            ),
+            RetrievedChunk(
+                text="Follow-up appointments help clinicians adjust treatment plans.",
+                score=0.24,
+                file_name="care-plan.pdf",
+                page_number=2,
+                chunk_id="care-plan.pdf:page-2:chunk-1",
+                metadata={"file_name": "care-plan.pdf"},
+            ),
+        ]
+
+    def test_settings_include_chat_model_defaults(self):
+        settings = get_settings()
+
+        self.assertEqual(settings.chat_model, "gpt-4o-mini")
+        self.assertEqual(settings.chat_temperature, 0.0)
+
+    def test_create_chat_llm_requires_api_key(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaises(ValueError):
+                create_chat_llm(Settings())
+
+    def test_build_context_includes_source_metadata(self):
+        context = build_context(self._sample_chunks())
+
+        self.assertIn("hypertension-guide.pdf", context)
+        self.assertIn("Page: 4", context)
+        self.assertIn("Chunk ID: hypertension-guide.pdf:page-4:chunk-1", context)
+        self.assertIn("blood pressure", context)
+
+    def test_build_grounded_prompt_includes_rules(self):
+        prompt = build_grounded_prompt(
+            "How should hypertension be monitored?",
+            self._sample_chunks(),
+        )
+
+        self.assertIn("Answer using only the retrieved source context", prompt)
+        self.assertIn("How should hypertension be monitored?", prompt)
+        self.assertIn("hypertension-guide.pdf", prompt)
+
+    def test_generate_grounded_answer_uses_fake_llm_and_returns_citations(self):
+        def fake_llm(prompt):
+            self.assertIn("hypertension-guide.pdf", prompt)
+            return (
+                "Patients should monitor blood pressure regularly "
+                "(hypertension-guide.pdf, page 4)."
+            )
+
+        grounded_answer = generate_grounded_answer(
+            question="How should hypertension be monitored?",
+            chunks=self._sample_chunks(),
+            llm_callable=fake_llm,
+        )
+
+        self.assertIn("blood pressure", grounded_answer.answer)
+        self.assertEqual(len(grounded_answer.citations), 2)
+        self.assertEqual(
+            grounded_answer.citations[0].file_name,
+            "hypertension-guide.pdf",
+        )
+        self.assertEqual(grounded_answer.citations[0].page_number, 4)
+
+    def test_generate_grounded_answer_handles_no_chunks(self):
+        grounded_answer = generate_grounded_answer(
+            question="What does the document say about discharge?",
+            chunks=[],
+            llm_callable=lambda prompt: "This should not be called.",
+        )
+
+        self.assertIn("do not contain enough information", grounded_answer.answer)
+        self.assertEqual(grounded_answer.citations, [])
+
+    def test_generate_grounded_answer_rejects_empty_question(self):
+        with self.assertRaises(ValueError):
+            generate_grounded_answer(question=" ", chunks=self._sample_chunks())
+
+
+if __name__ == "__main__":
+    unittest.main()

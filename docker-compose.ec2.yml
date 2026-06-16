@@ -1,0 +1,15 @@
+services:
+  backend:
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+    volumes:
+      - healthcare_data:/app/data
+
+  frontend:
+    restart: unless-stopped
+    environment:
+      - BACKEND_URL=http://backend:8000
+
+volumes:
+  healthcare_data:

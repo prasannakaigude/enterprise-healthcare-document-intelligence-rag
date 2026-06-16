@@ -1,0 +1,39 @@
+# Version 1 dependency plan.
+# Later versions will install and use these packages step by step.
+
+# Core
+python-dotenv
+pydantic
+boto3
+
+# Backend planned for future versions
+fastapi
+uvicorn
+
+# Frontend planned for future versions
+streamlit
+
+# RAG planned for future versions
+langchain
+langchain-chroma
+langchain-core
+langchain-community
+langchain-text-splitters
+langchain-openai
+openai
+chromadb
+
+# PDF ingestion planned for future versions
+pypdf
+unstructured
+pdfminer.six
+pdf2image
+pytesseract
+pillow
+
+# Evaluation planned for future versions
+ragas
+datasets
+
+# Testing planned for future versions
+pytest
