@@ -288,20 +288,6 @@ I wrote tests so I can verify the project safely without calling paid or externa
 
 The tests use fake embeddings, fake LLM behavior, mocked parser behavior, and fake AWS clients where needed. Real OpenAI and AWS calls are only needed when running the actual local pipeline with real credentials.
 
-## Resume Alignment
-
-This project honestly matches the stack I wanted to show:
-
-```text
-Python, FastAPI, Streamlit, LangChain, OpenAI API, ChromaDB,
-PyPDF, Unstructured, OCR, RAGAS, Docker, AWS S3, AWS EC2
-```
-
-Strong resume-style summary:
-
-```text
-Built a production-style healthcare document intelligence RAG platform with PDF ingestion, OCR fallback, LangChain chunking, OpenAI embeddings, ChromaDB retrieval, grounded LLM responses with citations, FastAPI APIs, Streamlit UI, RAGAS evaluation, Docker containerization, and AWS S3/EC2 deployment paths.
-```
 
 ## Version Roadmap
 
