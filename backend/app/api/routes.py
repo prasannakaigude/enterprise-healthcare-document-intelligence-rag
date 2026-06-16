@@ -1,14 +1,21 @@
 """FastAPI routes for the healthcare RAG backend."""
 
+from typing import List
+
 from fastapi import APIRouter, HTTPException
 
+from backend.app.core.conversation_logger import write_conversation_log
 from backend.app.core.health import get_health_status
+from backend.app.core.settings import get_settings
 from backend.app.models.api import (
     AskRequest,
     AskResponse,
     CitationResponse,
+    DocumentResponse,
     HealthResponse,
+    IndexResponse,
 )
+from backend.app.rag.indexing import rebuild_vector_store
 from backend.app.rag.pipeline import answer_question
 
 
@@ -34,9 +41,19 @@ def ask_question(request: AskRequest) -> AskResponse:
     """Answer a user question using the RAG pipeline."""
 
     try:
-        grounded_answer = answer_question(request.question)
+        grounded_answer = answer_question(
+            question=request.question,
+            file_name=request.file_name,
+        )
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+    write_conversation_log(
+        question=request.question,
+        answer=grounded_answer.answer,
+        citations=grounded_answer.citations,
+        settings=get_settings(),
+    )
 
     return AskResponse(
         answer=grounded_answer.answer,
@@ -50,3 +67,31 @@ def ask_question(request: AskRequest) -> AskResponse:
         ],
     )
 
+
+@router.get("/documents", response_model=List[DocumentResponse])
+def list_documents() -> List[DocumentResponse]:
+    """List local raw PDFs that can be selected in the UI."""
+
+    settings = get_settings()
+    return [
+        DocumentResponse(file_name=pdf_path.name)
+        for pdf_path in sorted(settings.raw_data_dir.glob("*.pdf"))
+    ]
+
+
+@router.post("/ingest/rebuild", response_model=IndexResponse)
+def rebuild_documents() -> IndexResponse:
+    """Rebuild the vector store from uploaded raw PDFs."""
+
+    try:
+        result = rebuild_vector_store(get_settings())
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return IndexResponse(
+        pdf_pages_parsed=result.pdf_pages_parsed,
+        documents_created=result.documents_created,
+        chunks_created=result.chunks_created,
+        chunks_stored=result.chunks_stored,
+        collection_name=result.collection_name,
+    )

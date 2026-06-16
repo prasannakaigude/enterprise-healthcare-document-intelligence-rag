@@ -1,12 +1,18 @@
 """End-to-end RAG pipeline orchestration."""
 
 from backend.app.core.settings import Settings, get_settings
+from typing import Optional
+
 from backend.app.rag.answer_generator import GroundedAnswer, create_chat_llm, generate_grounded_answer
 from backend.app.rag.retriever import retrieve_relevant_chunks
 from backend.app.rag.vector_store import create_openai_embeddings
 
 
-def answer_question(question: str, settings: Settings = None) -> GroundedAnswer:
+def answer_question(
+    question: str,
+    settings: Settings = None,
+    file_name: Optional[str] = None,
+) -> GroundedAnswer:
     """Retrieve relevant chunks and generate a grounded answer."""
 
     active_settings = settings or get_settings()
@@ -19,6 +25,7 @@ def answer_question(question: str, settings: Settings = None) -> GroundedAnswer:
         persist_directory=active_settings.chroma_db_dir,
         collection_name=active_settings.chroma_collection_name,
         top_k=active_settings.retrieval_top_k,
+        file_name=file_name,
     )
 
     return generate_grounded_answer(
@@ -26,4 +33,3 @@ def answer_question(question: str, settings: Settings = None) -> GroundedAnswer:
         chunks=chunks,
         llm=llm,
     )
-

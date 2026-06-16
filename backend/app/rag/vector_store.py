@@ -64,7 +64,10 @@ def store_documents_in_chroma(
             str(document.metadata.get("chunk_id", f"chunk-{index}"))
             for index, document in enumerate(document_list, start=1)
         ]
+        try:
+            vector_store.delete(ids=ids)
+        except Exception:
+            pass
         vector_store.add_documents(document_list, ids=ids)
 
     return vector_store
-

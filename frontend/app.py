@@ -2,7 +2,13 @@
 
 import streamlit as st
 
-from frontend.api_client import BackendAPIError, DEFAULT_BACKEND_URL, ask_backend
+from frontend.api_client import (
+    BackendAPIError,
+    DEFAULT_BACKEND_URL,
+    ask_backend,
+    list_documents_backend,
+    rebuild_vector_store_backend,
+)
 from frontend.document_upload import DEFAULT_RAW_DATA_DIR, save_uploaded_pdf
 
 
@@ -16,6 +22,19 @@ st.title("Enterprise Healthcare Document Intelligence")
 
 backend_url = st.sidebar.text_input("Backend URL", value=DEFAULT_BACKEND_URL)
 
+try:
+    available_documents = list_documents_backend(backend_url=backend_url)
+except BackendAPIError:
+    available_documents = []
+
+document_options = ["All indexed PDFs"] + [
+    document["file_name"] for document in available_documents
+]
+selected_document = st.selectbox("Search scope", options=document_options)
+selected_file_name = (
+    selected_document if selected_document != "All indexed PDFs" else None
+)
+
 uploaded_pdf = st.file_uploader("Upload a healthcare PDF", type=["pdf"])
 
 if uploaded_pdf is not None:
@@ -25,9 +44,20 @@ if uploaded_pdf is not None:
         st.error(str(error))
     else:
         st.success(f"Saved to {saved_path.relative_to(DEFAULT_RAW_DATA_DIR.parent.parent)}")
-        st.info(
-            "Rebuild the vector store before asking questions about this new PDF."
-        )
+        with st.spinner("Processing PDF and updating the vector store..."):
+            try:
+                indexing_result = rebuild_vector_store_backend(backend_url=backend_url)
+            except BackendAPIError as error:
+                st.error(str(error))
+                st.info("The PDF was saved, but it is not searchable until indexing succeeds.")
+            else:
+                st.success(
+                    "Ready to search: indexed {chunks_created} chunks from {pages} pages.".format(
+                        chunks_created=indexing_result.get("chunks_created", 0),
+                        pages=indexing_result.get("pdf_pages_parsed", 0),
+                    )
+                )
+                st.rerun()
 
 st.subheader("Demo Questions")
 demo_questions = [
@@ -56,7 +86,11 @@ if ask_clicked:
     else:
         with st.spinner("Searching documents and generating an answer..."):
             try:
-                result = ask_backend(question=question, backend_url=backend_url)
+                result = ask_backend(
+                    question=question,
+                    backend_url=backend_url,
+                    file_name=selected_file_name,
+                )
             except (BackendAPIError, ValueError) as error:
                 st.error(str(error))
             else:

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -43,6 +43,7 @@ def retrieve_relevant_chunks(
     persist_directory: Path,
     collection_name: str,
     top_k: int = 4,
+    file_name: Optional[str] = None,
 ) -> List[RetrievedChunk]:
     """Search ChromaDB for chunks that are semantically similar to the query."""
 
@@ -58,10 +59,14 @@ def retrieve_relevant_chunks(
         collection_name=collection_name,
     )
 
-    results = vector_store.similarity_search_with_score(query, k=top_k)
+    search_filter = {"file_name": file_name} if file_name else None
+    results = vector_store.similarity_search_with_score(
+        query,
+        k=top_k,
+        filter=search_filter,
+    )
 
     return [
         _document_to_retrieved_chunk(document=document, score=score)
         for document, score in results
     ]
-

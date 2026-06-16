@@ -28,6 +28,9 @@ class Settings:
     raw_data_dir: Path = PROJECT_ROOT / "data" / "raw"
     processed_data_dir: Path = PROJECT_ROOT / "data" / "processed"
     chroma_db_dir: Path = PROJECT_ROOT / "data" / "vector_db" / "chroma"
+    log_conversations: bool = True
+    log_raw_conversation_text: bool = False
+    conversation_log_path: Path = PROJECT_ROOT / "data" / "processed" / "conversation_logs.jsonl"
     chunk_size: int = 1000
     chunk_overlap: int = 200
     retrieval_top_k: int = 4
@@ -62,6 +65,19 @@ def get_settings() -> Settings:
         ),
         chroma_db_dir=Path(
             os.getenv("CHROMA_DB_DIR", PROJECT_ROOT / "data" / "vector_db" / "chroma")
+        ),
+        log_conversations=os.getenv("LOG_CONVERSATIONS", "true").lower()
+        in {"1", "true", "yes"},
+        log_raw_conversation_text=os.getenv(
+            "LOG_RAW_CONVERSATION_TEXT",
+            "false",
+        ).lower()
+        in {"1", "true", "yes"},
+        conversation_log_path=Path(
+            os.getenv(
+                "CONVERSATION_LOG_PATH",
+                PROJECT_ROOT / "data" / "processed" / "conversation_logs.jsonl",
+            )
         ),
         chunk_size=int(os.getenv("CHUNK_SIZE", "1000")),
         chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "200")),
