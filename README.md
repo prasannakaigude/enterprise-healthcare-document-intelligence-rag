@@ -1,8 +1,8 @@
 # Enterprise Healthcare Document Intelligence RAG Platform
 
-I built this project as a production-style healthcare document intelligence RAG platform.
+I built this project as a healthcare document intelligence platform for working with PDF documents using retrieval-augmented generation.
 
-My goal was to rebuild the project from scratch and understand each part of a real GenAI/RAG system: PDF ingestion, parsing, chunking, embeddings, vector search, grounded answer generation, citations, API development, frontend development, evaluation, Docker, and AWS deployment planning.
+The application lets a user upload healthcare PDFs, process them into searchable chunks, ask questions, and receive grounded answers with source citations. I built it version by version so each part of the system is understandable and testable.
 
 RAG means Retrieval-Augmented Generation. In simple words, my application reads healthcare PDF documents, breaks them into searchable chunks, stores those chunks in a vector database, retrieves the most relevant chunks for a user question, and generates an answer using the retrieved evidence.
 
@@ -10,7 +10,7 @@ RAG means Retrieval-Augmented Generation. In simple words, my application reads 
 
 Current version: Version 15.
 
-At this stage, I have implemented the full resume-aligned project path:
+At this stage, the project includes:
 
 - healthcare PDF ingestion with PyPDF
 - Unstructured parsing path for more complex PDFs
