@@ -30,6 +30,15 @@ At this stage, the project includes:
 - AWS EC2 deployment path
 - automated tests for the main project layers
 
+## Architecture
+
+![Healthcare RAG architecture](docs/architecture.png)
+
+The diagram shows the two main flows in the application:
+
+- **Indexing flow:** uploaded PDFs are saved, parsed, converted into LangChain documents, split into chunks, embedded, and stored in ChromaDB.
+- **Question-answer flow:** the selected PDF and question are sent to the backend, relevant chunks are retrieved, a grounded answer is generated, citations are returned, and the conversation is logged.
+
 ## Tech Stack
 
 - Python
