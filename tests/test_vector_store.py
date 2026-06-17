@@ -8,6 +8,8 @@ from langchain_core.embeddings import Embeddings
 
 from backend.app.core.settings import Settings, get_settings
 from backend.app.rag.vector_store import (
+    CHROMA_WRITE_BATCH_SIZE,
+    batch_items,
     create_openai_embeddings,
     store_documents_in_chroma,
 )
@@ -79,6 +81,51 @@ class VectorStoreTests(unittest.TestCase):
             self.assertIn("care plan", results[0].page_content)
             self.assertIn("file_name", results[0].metadata)
             self.assertIn("page_number", results[0].metadata)
+
+    def test_store_documents_in_chroma_writes_large_inputs_in_batches(self):
+        class FakeVectorStore:
+            def __init__(self):
+                self.deleted_batches = []
+                self.added_batches = []
+
+            def delete(self, ids):
+                self.deleted_batches.append(ids)
+
+            def add_documents(self, documents, ids):
+                self.added_batches.append((documents, ids))
+
+        documents = [
+            Document(
+                page_content=f"Chunk {index}",
+                metadata={"chunk_id": f"large.pdf:chunk-{index}"},
+            )
+            for index in range(CHROMA_WRITE_BATCH_SIZE + 2)
+        ]
+        fake_vector_store = FakeVectorStore()
+
+        with patch(
+            "backend.app.rag.vector_store.create_chroma_vector_store",
+            return_value=fake_vector_store,
+        ):
+            store_documents_in_chroma(
+                documents=documents,
+                embeddings=FakeEmbeddings(),
+                persist_directory=Path("unused"),
+                collection_name="test_healthcare_documents",
+            )
+
+        self.assertEqual(len(fake_vector_store.deleted_batches), 2)
+        self.assertEqual(len(fake_vector_store.added_batches), 2)
+        self.assertEqual(
+            len(fake_vector_store.added_batches[0][0]),
+            CHROMA_WRITE_BATCH_SIZE,
+        )
+        self.assertEqual(len(fake_vector_store.added_batches[1][0]), 2)
+
+    def test_batch_items_splits_list_into_expected_chunks(self):
+        batches = list(batch_items([1, 2, 3, 4, 5], batch_size=2))
+
+        self.assertEqual(batches, [[1, 2], [3, 4], [5]])
 
 
 if __name__ == "__main__":

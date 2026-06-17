@@ -95,7 +95,7 @@ def select_relevant_chunks(
     chunks: List[RetrievedChunk],
     max_chunks: int = 3,
 ) -> List[RetrievedChunk]:
-    """Keep only chunks that look relevant and avoid duplicate citations."""
+    """Keep only chunks that look relevant and avoid exact duplicate chunks."""
 
     selected_chunks: List[RetrievedChunk] = []
     seen_sources: set[tuple[str, int, str]] = set()
@@ -116,6 +116,30 @@ def select_relevant_chunks(
             break
 
     return selected_chunks
+
+
+def build_unique_citations(chunks: List[RetrievedChunk]) -> List[SourceCitation]:
+    """Create user-facing citations without repeating the same file/page."""
+
+    citations: List[SourceCitation] = []
+    seen_pages: set[tuple[str, int]] = set()
+
+    for chunk in chunks:
+        page_key = (chunk.file_name, chunk.page_number)
+
+        if page_key in seen_pages:
+            continue
+
+        citations.append(
+            SourceCitation(
+                file_name=chunk.file_name,
+                page_number=chunk.page_number,
+                chunk_id=chunk.chunk_id,
+            )
+        )
+        seen_pages.add(page_key)
+
+    return citations
 
 
 def create_chat_llm(settings: Settings = None) -> ChatOpenAI:
@@ -223,13 +247,6 @@ def generate_grounded_answer(
         active_llm = llm or create_chat_llm()
         answer = _call_langchain_llm(active_llm, prompt)
 
-    citations = [
-        SourceCitation(
-            file_name=chunk.file_name,
-            page_number=chunk.page_number,
-            chunk_id=chunk.chunk_id,
-        )
-        for chunk in relevant_chunks
-    ]
+    citations = build_unique_citations(relevant_chunks)
 
     return GroundedAnswer(answer=answer, citations=citations)

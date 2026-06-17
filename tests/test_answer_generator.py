@@ -5,6 +5,7 @@ from backend.app.core.settings import Settings, get_settings
 from backend.app.rag.answer_generator import (
     build_context,
     build_grounded_prompt,
+    build_unique_citations,
     create_chat_llm,
     generate_grounded_answer,
     select_relevant_chunks,
@@ -83,6 +84,69 @@ class AnswerGeneratorTests(unittest.TestCase):
             "hypertension-guide.pdf",
         )
         self.assertEqual(grounded_answer.citations[0].page_number, 4)
+
+    def test_generate_grounded_answer_deduplicates_citations_by_file_and_page(self):
+        chunks = [
+            RetrievedChunk(
+                text="Water fluoridation improves dental health.",
+                score=0.10,
+                file_name="public-health.pdf",
+                page_number=25,
+                chunk_id="public-health.pdf:page-25:chunk-1",
+                metadata={},
+            ),
+            RetrievedChunk(
+                text="Water fluoridation is discussed by public health agencies.",
+                score=0.11,
+                file_name="public-health.pdf",
+                page_number=25,
+                chunk_id="public-health.pdf:page-25:chunk-2",
+                metadata={},
+            ),
+            RetrievedChunk(
+                text="Water fluoridation policy decisions can happen locally.",
+                score=0.12,
+                file_name="public-health.pdf",
+                page_number=25,
+                chunk_id="public-health.pdf:page-25:chunk-3",
+                metadata={},
+            ),
+        ]
+
+        grounded_answer = generate_grounded_answer(
+            question="Explain water fluoridation.",
+            chunks=chunks,
+            llm_callable=lambda prompt: "Water fluoridation improves dental health.",
+        )
+
+        self.assertEqual(len(grounded_answer.citations), 1)
+        self.assertEqual(grounded_answer.citations[0].file_name, "public-health.pdf")
+        self.assertEqual(grounded_answer.citations[0].page_number, 25)
+
+    def test_build_unique_citations_keeps_different_pages(self):
+        citations = build_unique_citations(
+            [
+                RetrievedChunk(
+                    text="Water fluoridation improves dental health.",
+                    score=0.10,
+                    file_name="public-health.pdf",
+                    page_number=25,
+                    chunk_id="public-health.pdf:page-25:chunk-1",
+                    metadata={},
+                ),
+                RetrievedChunk(
+                    text="Water quality standards are also discussed.",
+                    score=0.12,
+                    file_name="public-health.pdf",
+                    page_number=26,
+                    chunk_id="public-health.pdf:page-26:chunk-1",
+                    metadata={},
+                ),
+            ]
+        )
+
+        self.assertEqual(len(citations), 2)
+        self.assertEqual([citation.page_number for citation in citations], [25, 26])
 
     def test_select_relevant_chunks_filters_unrelated_chunks(self):
         relevant_chunks = select_relevant_chunks(

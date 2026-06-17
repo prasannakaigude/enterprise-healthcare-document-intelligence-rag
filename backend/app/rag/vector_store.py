@@ -16,6 +16,16 @@ from langchain_openai import OpenAIEmbeddings
 from backend.app.core.settings import Settings, get_settings
 
 
+CHROMA_WRITE_BATCH_SIZE = 500
+
+
+def batch_items(items: List, batch_size: int = CHROMA_WRITE_BATCH_SIZE) -> Iterable[List]:
+    """Split a list into smaller batches for ChromaDB writes."""
+
+    for start_index in range(0, len(items), batch_size):
+        yield items[start_index : start_index + batch_size]
+
+
 def create_openai_embeddings(settings: Settings = None) -> OpenAIEmbeddings:
     """Create the real OpenAI embedding client from environment settings."""
 
@@ -65,9 +75,14 @@ def store_documents_in_chroma(
             for index, document in enumerate(document_list, start=1)
         ]
         try:
-            vector_store.delete(ids=ids)
+            for id_batch in batch_items(ids):
+                vector_store.delete(ids=id_batch)
         except Exception:
             pass
-        vector_store.add_documents(document_list, ids=ids)
+        for document_batch, id_batch in zip(
+            batch_items(document_list),
+            batch_items(ids),
+        ):
+            vector_store.add_documents(document_batch, ids=id_batch)
 
     return vector_store

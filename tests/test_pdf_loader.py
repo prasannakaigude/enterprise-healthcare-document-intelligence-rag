@@ -1,6 +1,7 @@
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from pypdf import PdfWriter
 
@@ -52,7 +53,22 @@ class PDFLoaderTests(unittest.TestCase):
             self.assertEqual(len(pages), 2)
             self.assertEqual([page.file_name for page in pages], ["a.pdf", "b.pdf"])
 
+    def test_load_pdfs_from_directory_skips_missing_file_during_scan(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            self._create_blank_pdf(directory, "existing.pdf")
+            missing_path = directory / "missing.pdf"
+
+            with patch.object(
+                Path,
+                "glob",
+                return_value=[directory / "existing.pdf", missing_path],
+            ):
+                pages = load_pdfs_from_directory(directory)
+
+            self.assertEqual(len(pages), 1)
+            self.assertEqual(pages[0].file_name, "existing.pdf")
+
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -1,5 +1,8 @@
 """Streamlit frontend for the healthcare RAG platform."""
 
+import hashlib
+from pathlib import Path
+
 import streamlit as st
 
 from frontend.api_client import (
@@ -38,12 +41,33 @@ selected_file_name = (
 uploaded_pdf = st.file_uploader("Upload a healthcare PDF", type=["pdf"])
 
 if uploaded_pdf is not None:
-    try:
-        saved_path = save_uploaded_pdf(uploaded_pdf)
-    except (OSError, ValueError) as error:
-        st.error(str(error))
+    uploaded_bytes = uploaded_pdf.getvalue()
+    upload_signature = (
+        uploaded_pdf.name,
+        len(uploaded_bytes),
+        hashlib.sha256(uploaded_bytes).hexdigest(),
+    )
+
+    if st.session_state.get("last_saved_upload_signature") != upload_signature:
+        try:
+            saved_path = save_uploaded_pdf(uploaded_pdf)
+        except (OSError, ValueError) as error:
+            st.error(str(error))
+            saved_path = None
+        else:
+            st.session_state["last_saved_upload_signature"] = upload_signature
+            st.session_state["last_saved_upload_path"] = str(saved_path)
+            st.session_state["last_indexed_upload_signature"] = None
     else:
-        st.success(f"Saved to {saved_path.relative_to(DEFAULT_RAW_DATA_DIR.parent.parent)}")
+        saved_path = Path(st.session_state["last_saved_upload_path"])
+
+    if saved_path is not None:
+        st.success(
+            f"Saved to {saved_path.relative_to(DEFAULT_RAW_DATA_DIR.parent.parent)}"
+        )
+    if saved_path is not None and st.session_state.get(
+        "last_indexed_upload_signature"
+    ) != upload_signature:
         with st.spinner("Processing PDF and updating the vector store..."):
             try:
                 indexing_result = rebuild_vector_store_backend(backend_url=backend_url)
@@ -57,7 +81,10 @@ if uploaded_pdf is not None:
                         pages=indexing_result.get("pdf_pages_parsed", 0),
                     )
                 )
+                st.session_state["last_indexed_upload_signature"] = upload_signature
                 st.rerun()
+    elif saved_path is not None:
+        st.info("This uploaded PDF has already been indexed in this session.")
 
 st.subheader("Demo Questions")
 demo_questions = [

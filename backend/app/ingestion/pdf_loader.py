@@ -59,7 +59,9 @@ def load_pdfs_from_directory(directory: Path) -> List[ParsedPDFPage]:
     parsed_pages: List[ParsedPDFPage] = []
 
     for pdf_path in sorted(pdf_dir.glob("*.pdf")):
-        parsed_pages.extend(load_pdf_pages(pdf_path))
+        try:
+            parsed_pages.extend(load_pdf_pages(pdf_path))
+        except FileNotFoundError:
+            continue
 
     return parsed_pages
-
