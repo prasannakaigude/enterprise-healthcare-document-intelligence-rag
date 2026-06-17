@@ -8,7 +8,7 @@ RAG means Retrieval-Augmented Generation. In simple words, my application reads 
 
 ## Current Status
 
-Current version: Version 15.
+
 
 At this stage, the project includes:
 
